@@ -1,0 +1,181 @@
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Transaksi Keuangan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="font-roboto">
+
+    <!-- Navigation -->
+    <nav class="bg-blue-600 p-4 text-white shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex space-x-4">
+                <a href="#transaksi" class="nav-link p-2 rounded font-bold hover:text-gray-300">Transaksi</a>
+                <a href="#saldo" class="nav-link p-2 rounded font-bold hover:text-gray-300">Saldo</a>
+                <a href="#daftar-transaksi" class="nav-link p-2 rounded font-bold hover:text-gray-300">Daftar Transaksi</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page 1: Transaksi -->
+    <section id="transaksi" class="container mx-auto p-4 mt-4 card rounded-lg shadow-lg">
+        <h2 class="text-3xl font-bold mb-4 text-center text-blue-600">Transaksi</h2>
+        <form id="transaction-form" class="mb-4">
+            <div class="mb-4">
+                <label for="type" class="block text-gray-700">Tipe</label>
+                <select id="type" class="w-full p-2 border rounded">
+                    <option value="income">Pemasukan</option>
+                    <option value="expense">Pengeluaran</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="amount" class="block text-gray-700">Jumlah</label>
+                <input type="number" id="amount" class="w-full p-2 border rounded" placeholder="Masukkan jumlah">
+            </div>
+            <div class="mb-4">
+                <label for="description" class="block text-gray-700">Deskripsi</label>
+                <input type="text" id="description" class="w-full p-2 border rounded" placeholder="Masukkan deskripsi">
+            </div>
+            <button type="submit" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 w-full">Tambah Transaksi</button>
+        </form>
+    </section>
+
+    <!-- Page 2: Saldo -->
+    <section id="saldo" class="container mx-auto p-4 mt-4 card rounded-lg shadow-lg">
+        <h2 class="text-3xl font-bold mb-4 text-center text-blue-600">Saldo</h2>
+        <div class="text-gray-700 text-center">
+            <p id="net-balance" class="text-4xl font-bold">Rp0,00</p>
+        </div>
+    </section>
+
+    <!-- Page 3: Daftar Transaksi -->
+    <section id="daftar-transaksi" class="container mx-auto p-4 mt-4 card rounded-lg shadow-lg">
+        <h2 class="text-3xl font-bold mb-4 text-center text-blue-600">Daftar Transaksi</h2>
+        <div id="monthly-transactions">
+            <!-- Monthly transactions will be dynamically added here -->
+        </div>
+    </section>
+
+    <script>
+        document.getElementById('transaction-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const type = document.getElementById('type').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const description = document.getElementById('description').value;
+            const timestamp = new Date();
+
+            if (isNaN(amount) || amount <= 0 || description.trim() === '') {
+                alert('Silakan masukkan jumlah dan deskripsi yang valid.');
+                return;
+            }
+
+            const monthYear = `${timestamp.getMonth() + 1}-${timestamp.getFullYear()}`;
+            const monthId = `month-${monthYear}`;
+            let monthSection = document.getElementById(monthId);
+
+            if (!monthSection) {
+                monthSection = document.createElement('div');
+                monthSection.id = monthId;
+                monthSection.className = 'mb-4';
+                monthSection.innerHTML = `
+                    <h3 class="text-xl font-bold mb-2">Bulan ${timestamp.toLocaleString('id-ID', { month: 'long', year: 'numeric' })}</h3>
+                    <ul class="list-disc pl-5"></ul>
+                    <p class="font-bold mt-2">Total Bulan ${timestamp.toLocaleString('id-ID', { month: 'long', year: 'numeric' })}: <span class="total-month">Rp0,00</span></p>
+                `;
+                document.getElementById('monthly-transactions').appendChild(monthSection);
+            }
+
+            const transactionList = monthSection.querySelector('ul');
+            const transactionItem = document.createElement('li');
+            transactionItem.className = type === 'income' ? 'text-green-600 flex justify-between items-center' : 'text-red-600 flex justify-between items-center';
+            transactionItem.innerHTML = `
+                <span>${description}: Rp${formatCurrency(amount)} <br> <small>${timestamp.toLocaleString()}</small></span>
+                <div>
+                    <button class="edit-transaction text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>
+                    <button class="delete-transaction text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+            transactionList.appendChild(transactionItem);
+
+            updateBalance(type, amount);
+            updateMonthlyTotal(monthSection, type, amount);
+
+            // Clear the input fields
+            document.getElementById('amount').value = '';
+            document.getElementById('description').value = '';
+
+            // Add event listeners for edit and delete buttons
+            transactionItem.querySelector('.edit-transaction').addEventListener('click', function() {
+                editTransaction(transactionItem, type, amount, description);
+            });
+
+            transactionItem.querySelector('.delete-transaction').addEventListener('click', function() {
+                deleteTransaction(transactionItem, type, amount, monthSection);
+            });
+        });
+
+        function updateBalance(type, amount) {
+            const netBalanceElement = document.getElementById('net-balance');
+
+            let netBalance = parseFloat(netBalanceElement.textContent.replace('Rp', '').replace(/\./g, '').replace(',', '.'));
+
+            if (type === 'income') {
+                netBalance += amount;
+            } else {
+                netBalance -= amount;
+            }
+
+            netBalanceElement.textContent = `Rp${formatCurrency(netBalance)}`;
+        }
+
+        function updateMonthlyTotal(monthSection, type, amount) {
+            const totalMonthElement = monthSection.querySelector('.total-month');
+
+            let totalMonth = parseFloat(totalMonthElement.textContent.replace('Rp', '').replace(/\./g, '').replace(',', '.'));
+
+            if (type === 'income') {
+                totalMonth += amount;
+            } else {
+                totalMonth -= amount;
+            }
+
+            totalMonthElement.textContent = `Rp${formatCurrency(totalMonth)}`;
+        }
+
+        function editTransaction(transactionItem, type, amount, description) {
+            document.getElementById('type').value = type;
+            document.getElementById('amount').value = amount;
+            document.getElementById('description').value = description;
+
+            const monthSection = transactionItem.closest('div[id^="month-"]');
+            deleteTransaction(transactionItem, type, amount, monthSection);
+        }
+
+        function deleteTransaction(transactionItem, type, amount, monthSection) {
+            transactionItem.remove();
+            updateBalance(type === 'income' ? 'expense' : 'income', amount);
+            updateMonthlyTotal(monthSection, type === 'income' ? 'expense' : 'income', amount);
+        }
+
+        function formatCurrency(amount) {
+            return amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,').replace('.', ',');
+        }
+    </script>
+</body>
+</html>
